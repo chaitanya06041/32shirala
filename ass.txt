@@ -1,593 +1,722 @@
-OpenCV Face Rocognition(Using Image) (Assignment 2)
-# Import necessary libraries
-from cv2 import imread, CascadeClassifier, rectangle, waitKey, destroyAllWindows
-from google.colab.patches import cv2_imshow
-import cv2
+Assignment 1 (BFS & DFS for 8-puzzle)
 
-# Load the image file
-image_path = '/content/d66510ee-983b-11ef-a8b0-0242ac11000f-removebg.png'  # Replace with your image path
-pixels = imread(image_path)
 
-# Check if the image is loaded properly
-if pixels is None:
-    print("Image not found. Please check the path.")
+from collections import deque
+
+class Puzzle:
+    def __init__(self, start, goal):
+        self.start = start
+        self.goal = goal
+        self.rows = 3
+        self.cols = 3
+
+    def find_zero(self, state):
+        """Find the position of the blank (zero) in the puzzle."""
+        for i in range(self.rows):
+            for j in range(self.cols):
+                if state[i][j] == 0:
+                    return i, j
+
+    def is_goal(self, state):
+        """Check if the current state is the goal state."""
+        return state == self.goal
+
+    def generate_successors(self, state):
+        """Generate all possible successors from the current state."""
+        successors = []
+        x, y = self.find_zero(state)
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]  # right, left, down, up
+
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < self.rows and 0 <= ny < self.cols:
+                # Create a new state by swapping the blank with the adjacent tile
+                new_state = [row[:] for row in state]
+                new_state[x][y], new_state[nx][ny] = new_state[nx][ny], new_state[x][y]
+                successors.append(new_state)
+        return successors
+
+    def print_state(self, state):
+        """Print the state in a readable 3x3 format."""
+        for row in state:
+            print(row)
+        print()
+
+    def dfs(self):
+        """Depth-First Search for solving the 8-puzzle."""
+        stack = [(self.start, [])]  # (current state, path to this state)
+        visited = set()
+
+        while stack:
+            current, path = stack.pop()
+            current_tuple = tuple(tuple(row) for row in current)
+
+            if current_tuple in visited:
+                continue
+            visited.add(current_tuple)
+
+            if self.is_goal(current):
+                return path + [current]  # Return the path to the goal state
+
+            for successor in self.generate_successors(current):
+                stack.append((successor, path + [current]))
+        return None
+
+    def bfs(self):
+        """Breadth-First Search for solving the 8-puzzle."""
+        queue = deque([(self.start, [])])  # (current state, path to this state)
+        visited = set()
+
+        while queue:
+            current, path = queue.popleft()
+            current_tuple = tuple(tuple(row) for row in current)
+
+            if current_tuple in visited:
+                continue
+            visited.add(current_tuple)
+
+            if self.is_goal(current):
+                return path + [current]  # Return the path to the goal state
+
+            for successor in self.generate_successors(current):
+                queue.append((successor, path + [current]))
+        return None
+
+
+# Example Usage
+start_state = [
+    [1, 2, 3],
+    [0, 4, 6],
+    [7, 5, 8]
+]
+
+goal_state = [
+    [1, 2, 3],
+    [4, 5, 6],
+    [7, 8, 0]
+]
+
+puzzle = Puzzle(start_state, goal_state)
+
+print("Solving using DFS...")
+dfs_solution = puzzle.dfs()
+if dfs_solution:
+    for state in dfs_solution:
+        puzzle.print_state(state)
 else:
-    # Load the pre-trained face detection model
-    classifier = CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    print("No solution found using DFS.")
 
-    # Perform face detection
-    bboxes = classifier.detectMultiScale(pixels, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+print("Solving using BFS...")
+bfs_solution = puzzle.bfs()
+if bfs_solution:
+    for state in bfs_solution:
+        puzzle.print_state(state)
+else:
+    print("No solution found using BFS.")
 
-    # Print and draw bounding box for each detected face
-    for box in bboxes:
-        # Extract coordinates
-        x, y, width, height = box
-        x2, y2 = x + width, y + height
+
+
+
+
+
+_________________________________________________________________________________________________________________________________________________________________
+
+
+Assignment 2 (Constraint Satisfaction Problem) (3 Missionaries and 3 Cannibals Problem)
+
+from collections import deque
+# Check if a state is valid
+def is_valid_state(state):
+    m_left, c_left, boat, m_right, c_right = state
+
+    # Missionaries and cannibals should not be negative
+    if m_left < 0 or c_left < 0 or m_right < 0 or c_right < 0:
+        return False
+
+    # Missionaries must not be outnumbered by cannibals on either side
+    if (m_left > 0 and m_left < c_left) or (m_right > 0 and m_right < c_right):
+        return False
+
+    return True
+
+# Generate all possible next states
+def get_successors(state):
+    m_left, c_left, boat, m_right, c_right = state
+    moves = [(1, 0), (2, 0), (0, 1), (0, 2), (1, 1)]  # Possible boat moves
+    successors = []
+
+    for m, c in moves:
+        if boat == 'left':  # Boat moves from left to right
+            new_state = (m_left - m, c_left - c, 'right', m_right + m, c_right + c)
+        else:  # Boat moves from right to left
+            new_state = (m_left + m, c_left + c, 'left', m_right - m, c_right - c)
+
+        if is_valid_state(new_state):
+            successors.append(new_state)
+
+    return successors
+
+# BFS to find the solution
+def solve():
+    initial_state = (3, 3, 'left', 0, 0)  # (m_left, c_left, boat, m_right, c_right)
+    goal_state = (0, 0, 'right', 3, 3)
+    queue = deque([(initial_state, [])])  # (current state, path to state)
+    visited = set()
+
+    while queue:
+        current_state, path = queue.popleft()
+
+        if current_state in visited:
+            continue
+        visited.add(current_state)
+
+        # Check if the goal state is reached
+        if current_state == goal_state:
+            return path + [current_state]
+
+        # Generate successors and add to the queue
+        for successor in get_successors(current_state):
+            queue.append((successor, path + [current_state]))
+
+    return None  # No solution found
+
+# Main function
+if __name__ == "__main__":
+    solution = solve()
+
+    if solution:
+        print("Solution found:")
+        for step in solution:
+            print(step)
+    else:
+        print("No solution exists.")
+
+
+________________________________________________________________________________________________________________________________________________________________
+
+
+
+
+Assignment 3 (Family Tree)
+
+
+from pyswip import Prolog
+
+# Initialize Prolog
+prolog = Prolog()
+
+# Define gender facts (male and female)
+prolog.assertz("male(rajesh)")
+prolog.assertz("male(amit)")
+prolog.assertz("male(vivek)")
+prolog.assertz("female(sita)")
+prolog.assertz("female(geeta)")
+prolog.assertz("female(kiran)")
+prolog.assertz("female(rani)")
+
+# Define family relationships (parent facts)
+prolog.assertz("parent(rajesh, geeta)")  # Rajesh is Geeta's parent
+prolog.assertz("parent(rajesh, amit)")   # Rajesh is Amit's parent
+prolog.assertz("parent(sita, geeta)")    # Sita is Geeta's parent
+prolog.assertz("parent(sita, amit)")     # Sita is Amit's parent
+prolog.assertz("parent(geeta, kiran)")   # Geeta is Kiran's parent
+prolog.assertz("parent(geeta, vivek)")   # Geeta is Vivek's parent
+prolog.assertz("parent(amit, rani)")     # Amit is Rani's parent
+
+# Define rules for family relationships
+
+# Sibling rule: X and Y are siblings if they share the same parent
+prolog.assertz("sibling(X, Y) :- parent(P, X), parent(P, Y), X \\= Y")
+
+# Grandparent rule: X is a grandparent of Y if X is a parent of Z and Z is a parent of Y
+prolog.assertz("grandparent(X, Y) :- parent(X, Z), parent(Z, Y)")
+
+# Mother rule: X is the mother of Y if X is a parent of Y and X is female
+prolog.assertz("mother(X, Y) :- parent(X, Y), female(X)")
+
+# Father rule: X is the father of Y if X is a parent of Y and X is male
+prolog.assertz("father(X, Y) :- parent(X, Y), male(X)")
+
+# Grandmother rule: X is the grandmother of Y if X is a female and a parent of Z, and Z is a parent of Y
+prolog.assertz("grandmother(X, Y) :- mother(X, Z), parent(Z, Y)")
+
+# Grandfather rule: X is the grandfather of Y if X is a male and a parent of Z, and Z is a parent of Y
+prolog.assertz("grandfather(X, Y) :- father(X, Z), parent(Z, Y)")
+
+# Queries and Outputs
+
+# Query 1: Find Geeta's siblings
+print("Geeta's siblings:")
+siblings = list(prolog.query("setof(Sibling, sibling(geeta, Sibling), SiblingList)"))
+if siblings:
+    for sibling in siblings[0]['SiblingList']:
+        print(sibling)
+else:
+    print("No siblings found.")
+
+# Query 2: Find Rani's grandparents
+print("\nRani's grandparents:")
+grandparents = list(prolog.query("setof(Grandparent, grandparent(Grandparent, rani), GrandparentList)"))
+if grandparents:
+    for grandparent in grandparents[0]['GrandparentList']:
+        print(grandparent)
+else:
+    print("No grandparents found.")
+
+# Query 3: Find Kiran's mother
+print("\nKiran's mother:")
+mother = list(prolog.query("mother(Mother, kiran)"))
+if mother:
+    for m in mother:
+        print(m['Mother'])
+else:
+    print("No mother found.")
+
+# Query 4: Find Vivek's father
+print("\nVivek's father:")
+father = list(prolog.query("father(Father, vivek)"))
+if father:
+    for f in father:
+        print(f['Father'])
+else:
+    print("No father found.")
+
+
+
+
+________________________________________________________________________________________________________________________________________________________________
+
+
+Assignment 4 (A*)
+
+
+from queue import PriorityQueue
+
+# Define the graph with cities and distances
+graph = {
+    "Pune": {"Mumbai": 120, "Nashik": 200},
+    "Mumbai": {"Pune": 120, "Nagpur": 850},
+    "Nashik": {"Pune": 200, "Nagpur": 700},
+    "Nagpur": {"Mumbai": 850, "Nashik": 700, "Bhopal": 350},
+    "Bhopal": {"Nagpur": 350, "Indore": 200},
+    "Indore": {"Bhopal": 200}
+}
+
+# Heuristic values (straight-line distance to goal, e.g., Indore)
+heuristic = {
+    "Pune": 800,
+    "Mumbai": 900,
+    "Nashik": 700,
+    "Nagpur": 400,
+    "Bhopal": 200,
+    "Indore": 0  # Goal node
+}
+
+def a_star_algorithm(start, goal):
+    # Priority queue to hold nodes to explore
+    open_list = PriorityQueue()
+    open_list.put((0, start))  # (cost, node)
+    
+    # Dictionary to store the cost to reach each node
+    g_costs = {node: float('inf') for node in graph}
+    g_costs[start] = 0
+    
+    # Dictionary to reconstruct the shortest path
+    came_from = {}
+    
+    while not open_list.empty():
+        # Get the node with the lowest cost
+        _, current = open_list.get()
         
-        # Draw a rectangle around each detected face
-        rectangle(pixels, (x, y), (x2, y2), (0, 0, 255), 2)
-
-    # Display the image with detected faces in Colab
-    cv2_imshow(pixels)
-
-    # Release any resources
-    destroyAllWindows()
-
-
-________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
-
-
-
-
-OPENCV FACE RECOGNITION(USING LIVE CAMERA) (Assignment 2)
-
-
-
-
-!pip install opencv-python tensorflow
-import cv2
-import base64
-import numpy as np
-from PIL import Image
-import io
-from IPython.display import display, Javascript
-from google.colab.output import eval_js
-from google.colab.patches import cv2_imshow
-
-
-
-
-# JavaScript code to capture a photo using the webcam
-js_code = '''
-function initCamera() {
-    return new Promise((resolve, reject) => {
-        const video = document.createElement('video');
-        video.style.display = 'none';
-        document.body.appendChild(video);
-        const streamPromise = navigator.mediaDevices.getUserMedia({video: true});
-        streamPromise.then((stream) => {
-            video.srcObject = stream;
-            video.onloadedmetadata = () => {
-                resolve(video);
-            };
-            video.play();
-        }).catch((error) => {
-            reject(error);
-        });
-    });
-}
-
-async function takePhoto() {
-    const video = await initCamera();
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const context = canvas.getContext('2d');
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const img = canvas.toDataURL('image/jpeg');
-    return img;
-}
-'''
-
-display(Javascript(js_code))
-
-# Function to convert JavaScript captured image to OpenCV format
-def js_to_image(js_reply):
-    image_bytes = base64.b64decode(js_reply.split(',')[1])
-    image_PIL = Image.open(io.BytesIO(image_bytes))
-    image_np = np.array(image_PIL)
-    frame = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
-    return frame
-
-# Load the pre-trained face detection model
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-
-while True:
-    # Capture image using the webcam
-    js_reply = eval_js('takePhoto()')
-    frame = js_to_image(js_reply)
-
-    if frame is None:
-        continue
-
-    # Convert the image to grayscale for face detection
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    # Detect faces in the image
-    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-
-    # Draw rectangles around detected faces
-    for (x, y, w, h) in faces:
-        cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 255, 0), 2)
-
-    # Display the image with detected faces
-    cv2_imshow(frame)
-
-    # Break the loop if 'Esc' key is pressed
-    k = cv2.waitKey(30) & 0xff
-    if k == 27:
-        break
-
-cv2.destroyAllWindows()
-
-
-
-
-
-
-
-
-______________________________________________________________________________________________________________________________________________________________
-
-
-
-
-
-
-
-
-
-
-IMAGE CLASSIFICATION USING CNN(Assignment 3)
-
-
-
-import tensorflow as tf
-from tensorflow.keras import datasets, layers, models
-import matplotlib.pyplot as plt
-
-# Load the CIFAR-10 dataset
-(x_train, y_train), (x_test, y_test) = datasets.cifar10.load_data()
-
-# Normalize the pixel values
-x_train, x_test = x_train / 255.0, x_test / 255.0
-
-# Classes in CIFAR-10
-class_names = ['Airplane', 'Automobile', 'Bird', 'Cat', 'Deer', 
-               'Dog', 'Frog', 'Horse', 'Ship', 'Truck']
-
-# Visualize the first few images
-plt.figure(figsize=(10, 10))
-for i in range(25):
-    plt.subplot(5, 5, i+1)
-    plt.xticks([])
-    plt.yticks([])
-    plt.grid(False)
-    plt.imshow(x_train[i])
-    plt.xlabel(class_names[y_train[i][0]])
-plt.show()
-
-# Build the CNN model
-model = models.Sequential([
-    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3)),
-    layers.MaxPooling2D((2, 2)),
-    layers.Conv2D(64, (3, 3), activation='relu'),
-    layers.MaxPooling2D((2, 2)),
-    layers.Conv2D(64, (3, 3), activation='relu'),
-    layers.Flatten(),
-    layers.Dense(64, activation='relu'),
-    layers.Dense(10)  # Output layer for 10 classes
-])
-
-
-
-# Compile the model
-model.compile(optimizer='adam',
-              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-              metrics=['accuracy'])
-
-probability_model = tf.keras.Sequential([model, tf.keras.layers.Softmax()])
-
-# Train the model
-history = model.fit(x_train, y_train, epochs=10, 
-                    validation_data=(x_test, y_test))
-
-# Evaluate the model
-test_loss, test_acc = model.evaluate(x_test, y_test, verbose=2)
-print(f"Test accuracy: {test_acc}")
-
-# Plot training history
-plt.plot(history.history['accuracy'], label='Accuracy')
-plt.plot(history.history['val_accuracy'], label = 'Validation Accuracy')
-plt.xlabel('Epoch')
-plt.ylabel('Accuracy')
-plt.ylim([0, 1])
-plt.legend(loc='lower right')
-plt.show()
-
-
-
-
-
-from tensorflow.keras.preprocessing import image
-import numpy as np
-
-
-def predict_external_image(image_path):
-    # Load the image
-    img = image.load_img(image_path, target_size=(32, 32))  # Resize to model's input size
-    plt.imshow(img)  # Display the image
-    plt.axis('off')
-    plt.show()
+        if current == goal:
+            # Reconstruct the path
+            path = []
+            while current in came_from:
+                path.append(current)
+                current = came_from[current]
+            path.append(start)
+            path.reverse()
+            return path, g_costs[goal]
+        
+        # Explore neighbors
+        for neighbor, cost in graph[current].items():
+            tentative_g_cost = g_costs[current] + cost
+            if tentative_g_cost < g_costs[neighbor]:
+                g_costs[neighbor] = tentative_g_cost
+                f_cost = tentative_g_cost + heuristic[neighbor]
+                open_list.put((f_cost, neighbor))
+                came_from[neighbor] = current
     
-    # Convert image to array and preprocess
-    img_array = image.img_to_array(img)
-    img_array = img_array / 255.0  # Normalize to [0, 1]
-    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+    return None, float('inf')  # If no path is found
 
-    # Predict the class
-    predictions = probability_model.predict(img_array)
-    predicted_label = np.argmax(predictions[0])
-    confidence = 100 * np.max(predictions[0])
-    
-    print(f"Predicted class: {class_names[predicted_label]}")
-    print(f"Confidence: {confidence:.2f}%")
-    return predicted_label
+# Example Usage
+start_city = "Pune"
+goal_city = "Indore"
+path, cost = a_star_algorithm(start_city, goal_city)
 
-# Example: Predict an external image
-image_path = "/content/download (1).jpg"  # Replace with your image path
-predict_external_image(image_path)
-
-
+print(f"Shortest path from {start_city} to {goal_city}: {path}")
+print(f"Total cost: {cost}")
 
 
 _______________________________________________________________________________________________________________________________________________________________
 
 
 
-YOLO OBJECT DETECTION (Assignment 7)
+Assignment 5 (Minimax)
 
 
+import math
+
+# Define constants for the players and empty cells
+PLAYER_X = 'X'
+PLAYER_O = 'O'
+EMPTY = ' '
+
+def print_board(board):
+    """Utility function to print the Tic-Tac-Toe board."""
+    for row in board:
+        print(' | '.join(row))
+    print("\n")
+
+def is_terminal(board):
+    """Check if the game has ended."""
+    # Check rows, columns, and diagonals for a win
+    for row in board:
+        if row[0] == row[1] == row[2] and row[0] != EMPTY:
+            return True
+    for col in range(3):
+        if board[0][col] == board[1][col] == board[2][col] and board[0][col] != EMPTY:
+            return True
+    if board[0][0] == board[1][1] == board[2][2] and board[0][0] != EMPTY:
+        return True
+    if board[0][2] == board[1][1] == board[2][0] and board[0][2] != EMPTY:
+        return True
+    # Check for a tie
+    for row in board:
+        if EMPTY in row:
+            return False
+    return True
+
+def evaluate(board):
+    """Evaluate the board score."""
+    # Check rows, columns, and diagonals for a win
+    for row in board:
+        if row[0] == row[1] == row[2]:
+            if row[0] == PLAYER_X:
+                return 1
+            elif row[0] == PLAYER_O:
+                return -1
+    for col in range(3):
+        if board[0][col] == board[1][col] == board[2][col]:
+            if board[0][col] == PLAYER_X:
+                return 1
+            elif board[0][col] == PLAYER_O:
+                return -1
+    if board[0][0] == board[1][1] == board[2][2]:
+        if board[0][0] == PLAYER_X:
+            return 1
+        elif board[0][0] == PLAYER_O:
+            return -1
+    if board[0][2] == board[1][1] == board[2][0]:
+        if board[0][2] == PLAYER_X:
+            return 1
+        elif board[0][2] == PLAYER_O:
+            return -1
+    # If no winner, return 0
+    return 0
+
+def get_moves(board):
+    """Get a list of all valid moves."""
+    moves = []
+    for row in range(3):
+        for col in range(3):
+            if board[row][col] == EMPTY:
+                moves.append((row, col))
+    return moves
+
+def apply_move(board, move, player):
+    """Apply a move to the board."""
+    board[move[0]][move[1]] = player
+
+def undo_move(board, move):
+    """Undo a move on the board."""
+    board[move[0]][move[1]] = EMPTY
+
+def minimax(board, depth, maximizing_player):
+    """Minimax algorithm."""
+    if depth == 0 or is_terminal(board):
+        return evaluate(board), None
+
+    best_move = None
+    if maximizing_player:
+        max_eval = -math.inf
+        for move in get_moves(board):
+            apply_move(board, move, PLAYER_X)
+            eval_score, _ = minimax(board, depth - 1, False)
+            undo_move(board, move)
+            if eval_score > max_eval:
+                max_eval = eval_score
+                best_move = move
+        return max_eval, best_move
+    else:
+        min_eval = math.inf
+        for move in get_moves(board):
+            apply_move(board, move, PLAYER_O)
+            eval_score, _ = minimax(board, depth - 1, True)
+            undo_move(board, move)
+            if eval_score < min_eval:
+                min_eval = eval_score
+                best_move = move
+        return min_eval, best_move
+
+# Example game board
+board = [
+    [PLAYER_X, PLAYER_O, PLAYER_X],
+    [PLAYER_O, PLAYER_X, EMPTY],
+    [EMPTY, EMPTY, PLAYER_O]
+]
+
+print("Current Board:")
+print_board(board)
+
+# Find the best move for PLAYER_X
+score, best_move = minimax(board, depth=5, maximizing_player=True)
+print(f"Best Move for {PLAYER_X}: {best_move} with score {score}")
 
 
-pip install torch torchvision opencv-python
-!git clone https://github.com/ultralytics/yolov5
-!cd yolov5 && pip install -r requirements.txt
-
-import torch
-import cv2
-import matplotlib.pyplot as plt
-
-# Load YOLOv5 model (pretrained on COCO dataset)
-model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
-
-# Load the image
-img_path = '/content/dog.jpg'  # Replace with the path to your image
-img = cv2.imread(img_path)
-
-# Perform object detection
-results = model(img)
-
-# Display results
-results.show()  # This will show the image with bounding boxes and labels.
-
-# Optionally, save the result image
-results.save('output/')  # Save the results with bounding boxes
-
-# To get more detailed results, such as class labels, confidence scores, and bounding boxes:
-df = results.pandas().xyxy[0]  # Results as pandas dataframe
-print(df)
+________________________________________________________________________________________________________________________________________________________________
 
 
+Assignment 6 ( 8 Queens)
 
+def is_safe(board, row, col):
+    """
+    Check if placing a queen at (row, col) is safe.
+    """
+    # Check this row on the left
+    for i in range(col):
+        if board[row][i] == 1:
+            return False
 
+    # Check upper diagonal on the left
+    for i, j in zip(range(row, -1, -1), range(col, -1, -1)):
+        if board[i][j] == 1:
+            return False
 
+    # Check lower diagonal on the left
+    for i, j in zip(range(row, len(board)), range(col, -1, -1)):
+        if board[i][j] == 1:
+            return False
 
+    return True
 
+def solve_n_queens(board, col):
+    """
+    Use backtracking to solve the N-Queens problem.
+    """
+    if col >= len(board):
+        return True
 
-_______________________________________________________________________________________________________________________________________________________________
+    for i in range(len(board)):
+        if is_safe(board, i, col):
+            # Place the queen
+            board[i][col] = 1
 
+            # Recur to place the rest of the queens
+            if solve_n_queens(board, col + 1):
+                return True
 
+            # Backtrack: Remove the queen
+            board[i][col] = 0
 
-OCR TEXT EXTRACTION (Assignment 5)
+    return False
 
+def print_board(board):
+    """
+    Print the chessboard.
+    """
+    for row in board:
+        print(" ".join('Q' if cell == 1 else '.' for cell in row))
+    print("\n")
 
+# Initialize an 8x8 board
+N = 8
+board = [[0 for _ in range(N)] for _ in range(N)]
 
-
-
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-# Install pytesseract and Tesseract-OCR
-!pip install pytesseract
-!apt-get update
-!apt-get install -y tesseract-ocr
-!pip install google-colab
-
-# Import modules
-import cv2
-import numpy as np
-import pytesseract
-# from google.colab.patches import cv2_imshow
-# from google.colab import files
-
-
-def preprocess_image(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # Convert to grayscale
-    denoised = cv2.fastNlMeansDenoising(gray)       # Remove noise
-    thresh = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]  # Binary thresholding
-    return thresh
-
-
-    def detect_text_regions(image):
-    # Detecting words
-    boxes = pytesseract.image_to_data(image, output_type=pytesseract.Output.DICT)  # Get text region data
-    return boxes
-
-    def draw_bounding_boxes(image, boxes):
-    output = image.copy()  # Copy original image to draw boxes
-    n_boxes = len(boxes['level'])  # Total number of detected text regions
-    for i in range(n_boxes):
-        if int(boxes['conf'][i]) > 60:  # Only consider boxes with confidence > 60%
-            (x, y, w, h) = (boxes['left'][i], boxes['top'][i], boxes['width'][i], boxes['height'][i])  # Box coordinates
-            cv2.rectangle(output, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Draw rectangle on the image
-    return output
-
-
-    def get_detected_text(boxes):
-    detected_text = []
-    n_boxes = len(boxes['level'])  # Total number of detected boxes
-    for i in range(n_boxes):
-        if int(boxes['conf'][i]) > 60:  # Only extract text with confidence > 60%
-            detected_text.append(boxes['text'][i])  # Append detected text
-    return ' '.join(detected_text)  # Combine text into a single string
-
-
-
-
-from google.colab import files
-
-# Upload the image
-uploaded = files.upload()
-
-image = cv2.imread("download.jpg")
-
-
-# Check if image was successfully read
-if image is None:
-    print(f"Error: Unable to read the image file: {image_path}")
+if solve_n_queens(board, 0):
+    print("Solution to the 8-Queens problem:")
+    print_board(board)
 else:
-    # Display original image
-    print("\nOriginal Image:")
-    plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))  # Convert BGR to RGB
-    plt.show()
-
-    # Preprocess the image and detect text regions
-    preprocessed = preprocess_image(image)  # Preprocessing
-    boxes = detect_text_regions(preprocessed)  # Detect text regions
-
-    # Draw bounding boxes on original image
-    image_with_boxes = draw_bounding_boxes(image, boxes)
-
-    # Display the image with bounding boxes
-    print("\nImage with Text Detection Regions:")
-    plt.imshow(cv2.cvtColor(image_with_boxes, cv2.COLOR_BGR2RGB))  # Convert BGR to RGB
-    plt.show()
-
-    # Extract and print the detected text
-    detected_text = get_detected_text(boxes)
-    print("\nDetected Text:")
-    print(detected_text)
-
-________________________________________________________________________________________________________________________________________________________________
-
-
-
-
-
-
-
-Sentiment Analysis (Assignment 6)
-
-
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Embedding, LSTM, Dense
-from tensorflow.keras.datasets import imdb
-from tensorflow.keras.preprocessing.sequence import pad_sequences
-
-# Load and preprocess the data
-max_features = 10000  # Vocabulary size
-max_len = 200         # Maximum sequence length
-
-(X_train, y_train), (X_test, y_test) = imdb.load_data(num_words=max_features)
-X_train = pad_sequences(X_train, maxlen=max_len)
-X_test = pad_sequences(X_test, maxlen=max_len)
-
-# Build the LSTM model
-model = Sequential([
-    Embedding(input_dim=max_features, output_dim=128, input_length=max_len),
-    LSTM(64),
-    Dense(1, activation='sigmoid')
-])
-
-# Compile and train the model
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-model.fit(X_train, y_train, epochs=3, batch_size=64, validation_split=0.2)
-
-# Evaluate the model
-loss, accuracy = model.evaluate(X_test, y_test)
-print(f'Test accuracy: {accuracy:.4f}')
-
-
-def predict_sentiment(text):
-    # Preprocess the input text
-    word_index = imdb.get_word_index()
-    words = text.lower().split()
-    sequence = [word_index.get(word, 0) + 3 for word in words]  # +3 to adjust for special tokens in IMDb
-    sequence = pad_sequences([sequence], maxlen=max_len)
-
-    # Predict the sentiment
-    prediction = model.predict(sequence)[0][0]
-    sentiment = "Positive" if prediction > 0.5 else "Negative"
-    print(f"Predicted Sentiment: {sentiment} (Confidence: {prediction:.4f})")
-
-# Example usage
-predict_sentiment("This movie was fantastic and highly enjoyable!")
-predict_sentiment("The plot was boring and the acting was terrible.")
-
-
-
+    print("No solution exists.")
 
 
 ________________________________________________________________________________________________________________________________________________________________
 
 
+Assignment 7 (Forward Chaining) 
+
+def forward_chaining(facts, rules, goal):
+    """
+    Implements the forward chaining algorithm.
+
+    Args:
+        facts: A set of known facts (symptoms, observations, etc.).
+        rules: A list of rules. Each rule is a tuple (conditions, conclusion),
+               where conditions is a list of facts and conclusion is a single fact.
+        goal: The fact we want to derive (e.g., a diagnosis).
+
+    Returns:
+        True if the goal can be derived, otherwise False.
+    """
+    inferred = set()  # Facts already inferred
+    while True:
+        added_fact = False  # Track if a new fact is added in this iteration
+
+        for conditions, conclusion in rules:
+            # Check if rule is applicable and conclusion is not already inferred
+            if all(condition in facts for condition in conditions) and conclusion not in facts:
+                facts.add(conclusion)
+                inferred.add(conclusion)
+                added_fact = True
+                print(f"Inferred: {conclusion}")
+
+                if conclusion == goal:
+                    return True
+
+        if not added_fact:  # If no new facts are added, stop the process
+            break
+
+    return goal in facts
 
 
-Feedforward Neural Network (Assignment 1)
+# Example Usage
+facts = {"fever", "cough", "shortness of breath"}  # Known facts (symptoms)
+rules = [
+    (["fever", "cough"], "flu"),  # If fever and cough, then flu
+    (["flu", "body ache"], "severe flu"),  # If flu and body ache, then severe flu
+    (["flu", "shortness of breath"], "pneumonia"),  # If flu and shortness of breath, then pneumonia
+    (["headache", "sensitivity to light"], "migraine"),  # If headache and sensitivity to light, then migraine
+]
+goal = "pneumonia"
 
-import tensorflow as tf
-import matplotlib.pyplot as plt
-import numpy as np
-from tensorflow.keras.preprocessing import image
+print("Starting Forward Chaining...")
+if forward_chaining(facts, rules, goal):
+    print(f"Goal '{goal}' has been derived!")
+else:
+    print(f"Goal '{goal}' cannot be derived.")
 
-# Get data and split into train and test datasets
-(train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
+________________________________________________________________________________________________________________________________________________________________
 
-# Scale down values of pixels from 0-255 to 0-1
-train_images = train_images / 255.0
-test_images = test_images / 255.0
 
-# Visualizing data
-print(train_images.shape)
-print(test_images.shape)
-print(train_labels)
 
-# Display first image
-plt.imshow(train_images[0], cmap='gray')
-plt.show()
+Assignment 8(Backward Chaining) 
 
-# Defining neural network model
-my_model = tf.keras.models.Sequential()
-my_model.add(tf.keras.layers.Flatten(input_shape=(28, 28)))
-my_model.add(tf.keras.layers.Dense(128, activation='relu'))  # Rectified Linear Unit
-my_model.add(tf.keras.layers.Dense(10, activation='softmax'))  # Softmax for multi-class classification
+def backward_chaining(facts, rules, goal):
+    """
+    Implements the backward chaining algorithm.
 
-# Compiling the model
-my_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    Args:
+        facts: A set of known facts (symptoms, observations, etc.).
+        rules: A list of rules. Each rule is a tuple (conditions, conclusion),
+               where conditions is a list of facts and conclusion is a single fact.
+        goal: The fact we want to derive (e.g., a diagnosis).
 
-# Training the model
-my_model.fit(train_images, train_labels, epochs=3)
+    Returns:
+        True if the goal can be derived, otherwise False.
+    """
+    if goal in facts:
+        return True  # The goal is already a known fact
 
-# Checking model accuracy on test data
-val_loss, val_acc = my_model.evaluate(test_images, test_labels)
-print('Test accuracy: ', val_acc)
+    for conditions, conclusion in rules:
+        if conclusion == goal:
+            # Check if all conditions for this rule can be satisfied
+            if all(backward_chaining(facts, rules, condition) for condition in conditions):
+                return True
 
-# Predicting on a new image
-def predict_image(image_path):
-    img = image.load_img(image_path, target_size=(28, 28), color_mode="L")  # Load the image in grayscale
-    img_array = image.img_to_array(img)  # Convert the image to a numpy array
-    img_array = np.expand_dims(img_array, axis=0)  # Expand dimensions to match model input
-    img_array = img_array / 255.0  # Normalize the image
+    return False
 
-    # Get model prediction
-    predictions = my_model.predict(img_array)
-    predicted_label = np.argmax(predictions)  # Get the class with the highest probability
 
-    return predicted_label, predictions
+# Example Usage
+facts = {"fever", "cough", "shortness of breath"}  # Known facts (symptoms)
+rules = [
+    (["fever", "cough"], "flu"),  # If fever and cough, then flu
+    (["flu", "body ache"], "severe flu"),  # If flu and body ache, then severe flu
+    (["flu", "shortness of breath"], "pneumonia"),  # If flu and shortness of breath, then pneumonia
+    (["headache", "sensitivity to light"], "migraine"),  # If headache and sensitivity to light, then migraine
+]
+goal = "pneumonia"
 
-# Test the prediction function with a new image
-image_path = 'path_to_image.png'  # Replace with the path to the image you want to predict
-predicted_label, predictions = predict_image(image_path)
-
-# Displaying the predicted result
-print(f'Predicted Label: {predicted_label}')
-print(f'Predictions: {predictions}')
+print("Starting Backward Chaining...")
+if backward_chaining(facts, rules, goal):
+    print(f"Goal '{goal}' has been derived!")
+else:
+    print(f"Goal '{goal}' cannot be derived.")
 
 
 
 ________________________________________________________________________________________________________________________________________________________________
 
 
-Stock Price Prediction using RNN (Assignment 4)
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
-from keras.models import Sequential
-from keras.layers import Dense, SimpleRNN
-from sklearn.model_selection import train_test_split
+Assignment 9 (Chat bot)
 
-dataframe = pd.read_csv('/content/TSLA.csv')  # Ensure the dataset has 'Date' and 'Close' columns
-dataframe['Date'] = pd.to_datetime(dataframe['Date'])
-dataframe.set_index('Date', inplace=True)
+import random
 
-closing_prices = dataframe[['Close']].values
-scaler_obj = MinMaxScaler(feature_range=(0, 1))
-normalized_data = scaler_obj.fit_transform(closing_prices)
+# Define symptoms and corresponding conditions
+conditions = {
+    "fever": ["flu", "common cold", "COVID-19"],
+    "cough": ["flu", "common cold", "bronchitis"],
+    "headache": ["migraine", "stress", "dehydration"],
+    "shortness of breath": ["asthma", "COVID-19", "pneumonia"],
+    "body ache": ["flu", "viral infection"],
+    "sore throat": ["common cold", "strep throat", "flu"],
+}
 
-def generate_sequences(data, seq_len):
-    X_seq, y_seq = [], []
-    for idx in range(len(data) - seq_len):
-        X_seq.append(data[idx:idx + seq_len])
-        y_seq.append(data[idx + seq_len])
-    return np.array(X_seq), np.array(y_seq)
+# Define responses for small talk
+small_talk = {
+    "hello": ["Hello! How can I assist you today?", "Hi there! What symptoms are you experiencing?"],
+    "how are you": ["I'm just a bot, but I'm here to help you!"],
+    "thank you": ["You're welcome! Stay healthy!", "Happy to help!"],
+    "bye": ["Goodbye! Take care!", "Bye! Feel better soon!"],
+}
 
-sequence_len = 60  # You can modify the sequence length as needed
-X_features, y_labels = generate_sequences(normalized_data, sequence_len)
+def chatbot_response(user_input):
+    user_input = user_input.lower().strip()
 
-train_test_split_idx = int(len(X_features) * 0.8)
-X_train_data, y_train_data = X_features[:train_test_split_idx], y_labels[:train_test_split_idx]
-X_test_data, y_test_data = X_features[train_test_split_idx:], y_labels[train_test_split_idx:]
+    # Small talk response
+    for key in small_talk:
+        if key in user_input:
+            return random.choice(small_talk[key])
 
-rnn_model = Sequential()
-rnn_model.add(SimpleRNN(units=50, activation='relu', input_shape=(sequence_len, 1)))
-rnn_model.add(Dense(1))  # Output layer for predicting the stock price
+    # Check for symptoms
+    symptoms_found = [symptom for symptom in conditions if symptom in user_input]
+    if symptoms_found:
+        response = "Based on your symptoms, you might have the following conditions:\n"
+        for symptom in symptoms_found:
+            response += f"- {symptom.capitalize()}: {', '.join(conditions[symptom])}\n"
+        response += "I recommend consulting a doctor for a proper diagnosis."
+        return response
 
-rnn_model.compile(optimizer='adam', loss='mean_squared_error')
+    # Default response
+    return "I'm sorry, I couldn't understand that. Can you describe your symptoms or ask a question?"
 
-training_history = rnn_model.fit(X_train_data, y_train_data, epochs=10, batch_size=32, validation_data=(X_test_data, y_test_data))
-     
-future_predictions = []
-recent_sequence = normalized_data[train_test_split_idx - sequence_len:train_test_split_idx]
+# Main chatbot loop
+def healthcare_chatbot():
+    print("Healthcare Assistant Chatbot")
+    print("Type 'bye' to end the conversation.\n")
 
-for _ in range(20):  # Predict for the next 20 days
-    recent_sequence = np.reshape(recent_sequence, (1, sequence_len, 1))  # Ensure correct shape for RNN
-    predicted_price = rnn_model.predict(recent_sequence)
+    while True:
+        user_input = input("You: ")
+        if user_input.lower() in ["bye", "exit", "quit"]:
+            print("Chatbot: Goodbye! Stay healthy!")
+            break
 
-    future_predictions.append(predicted_price[0][0])  # Store predicted price
+        response = chatbot_response(user_input)
+        print(f"Chatbot: {response}")
 
-    # Reshape predicted price and append it to the sequence
-    predicted_price = np.reshape(predicted_price, (1, 1, 1))
-    recent_sequence = np.append(recent_sequence[:, 1:, :], predicted_price, axis=1)
-     
-predicted_future_prices = scaler_obj.inverse_transform(np.array(future_predictions).reshape(-1, 1))
-     
-actual_future_prices = scaler_obj.inverse_transform(normalized_data[train_test_split_idx:train_test_split_idx+20])
+# Run the chatbot
+if __name__ == "__main__":
+    healthcare_chatbot()
 
-plt.plot(dataframe.index[train_test_split_idx:train_test_split_idx+20], actual_future_prices, label='Actual Prices')
-plt.plot(dataframe.index[train_test_split_idx:train_test_split_idx+20], predicted_future_prices, label='Predicted Prices')
-plt.title('Actual vs Predicted Stock Prices for the Next 20 Days')
-plt.xlabel('Date')
-plt.ylabel('Stock Price')
-plt.legend()
-plt.show()
 
-for day in range(20):
-    print(f"Day {day+1}: Actual: {actual_future_prices[day][0]}, Predicted: {predicted_future_prices[day][0]}")
-     
 
-________________________________________________++++++++++++________________________________++++++++++++_______________________++++++++++++++++++++___________________________________________________________________________________________________________________________________________________________________________
